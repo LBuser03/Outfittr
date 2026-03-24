@@ -1,0 +1,25 @@
+# --- SENSITIVE DATA (CRITICAL) ---
+.env
+.env.local
+.env.production
+
+# --- DEPENDENCIES ---
+# This prevents uploading thousands of files that 'npm install' can recreate
+node_modules/
+frontend/node_modules/
+
+# --- BUILD OUTPUTS ---
+# We don't track these because GitHub Actions builds them fresh every time
+frontend/dist/
+frontend/build/
+dist/
+
+# --- LOGS & DEBUGGING ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- OS SPECIFIC ---
+.DS_Store
+Thumbs.db
