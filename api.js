@@ -14,13 +14,14 @@ exports.setApp = function (app, client) {
             .find({ login: login, password: password })
             .toArray();
 
+        console.log(results[0]); // debug line
         var id = -1;
         var fn = '';
         var ln = '';
         var ret;
 
         if (results.length > 0) {
-            id = results[0].userId;
+            id = results[0]._id;
             fn = results[0].firstName;
             ln = results[0].lastName;
             try {

@@ -21,12 +21,13 @@ function Login() {
 
             // Manually decode JWT payload — no package needed
             const payload = JSON.parse(atob(accessToken.split('.')[1]));
+            console.log(payload); // debug line
 
             var userId = payload.userId;
             var firstName = payload.firstName;
             var lastName = payload.lastName;
 
-            if (!userId || userId <= 0) {
+            if (userId === undefined || userId === null) {
                 setMessage('User/Password combination incorrect');
             } else {
                 var user = { firstName: firstName, lastName: lastName, id: userId };
