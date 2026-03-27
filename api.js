@@ -11,7 +11,7 @@ exports.setApp = function (app, client) {
         const { login, password } = req.body;
         const db = client.db('OutfittrDB');
         const results = await db.collection('Users')
-            .find({ Login: login, Password: password })
+            .find({ login: login, password: password })
             .toArray();
 
         var id = -1;
@@ -20,9 +20,9 @@ exports.setApp = function (app, client) {
         var ret;
 
         if (results.length > 0) {
-            id = results[0].UserId;
-            fn = results[0].FirstName;
-            ln = results[0].LastName;
+            id = results[0].userId;
+            fn = results[0].firstName;
+            ln = results[0].lastName;
             try {
                 ret = token.createToken(fn, ln, id);
             } catch (e) {

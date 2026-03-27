@@ -15,6 +15,7 @@ function Login() {
             const response = await fetch(buildPath('api/login'),
                 { method: 'POST', body: js, headers: { 'Content-Type': 'application/json' } });
             var res = JSON.parse(await response.text());
+            console.log(res); // debug code
             const { accessToken } = res;
             storeToken(res);
 
