@@ -1,5 +1,7 @@
+const { upload } = require('./cloudinaryConfig.js');
 require('express');
 require('mongodb');
+const { cloudinary } = require('./cloudinaryConfig.js');
 var token = require('./createJWT.js');
 
 exports.setApp = function (app, client) {
@@ -70,42 +72,41 @@ exports.setApp = function (app, client) {
     });
 
     // ─── ADD ITEM ─────────────────────────────────────────────────────────────────
-    app.post('/api/additem', async (req, res, next) => {
-        // incoming: userId, item, jwtToken
-        // outgoing: error, jwtToken
+    app.post('/api/additem', upload.single('image'), async (req, res) => {
+        // Multi-part form data fields come in through req.body
         const { userId, item, jwtToken } = req.body;
-
-        // JWT expiry check
+        
         try {
             if (token.isExpired(jwtToken)) {
-                var r = { error: 'The JWT is no longer valid', jwtToken: '' };
-                res.status(200).json(r);
-                return;
+                return res.status(200).json({ error: 'The JWT is no longer valid', jwtToken: '' });
             }
-        } catch (e) {
-            console.log(e.message);
+        } catch (e) { console.log(e.message); }
+
+        if (!req.file) {
+            return res.status(400).json({ error: 'No image uploaded' });
         }
 
-        const newItem = { Item: item, UserId: userId };
-        var error = '';
+        const newItem = { 
+            UserId: userId, 
+            Name: name,
+            Type: type || "unknown",
+            Tags: tags ? JSON.parse(tags) : [],
+            ImageUrl: req.file.path, // Cloudinary URL
+            CloudinaryPublicID: req.file.filename
+        };
 
+        let error = '';
         try {
             const db = client.db('OutfittrDB');
-            const result = await db.collection('Items').insertOne(newItem);
+            await db.collection('Items').insertOne(newItem);
         } catch (e) {
             error = e.toString();
         }
 
-        // Refresh token
-        var refreshedToken = null;
-        try {
-            refreshedToken = token.refresh(jwtToken);
-        } catch (e) {
-            console.log(e.message);
-        }
+        let refreshedToken = null;
+        try { refreshedToken = token.refresh(jwtToken); } catch (e) {}
 
-        var ret = { error: error, jwtToken: refreshedToken };
-        res.status(200).json(ret);
+        res.status(200).json({ error: error, jwtToken: refreshedToken, imageUrl: req.file.path });
     });
 
     // ─── SEARCH ITEMS ─────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { buildPath } from './Path';
-import { storeToken } from '../../tokenStorage'; // ✅ FIXED PATH
+import { storeToken } from '../../../tokenStorage';
 import { useNavigate } from 'react-router-dom';
 
 function Login() {
