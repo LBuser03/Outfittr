@@ -1,15 +1,18 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import './App.css';
-import LoginPage from './pages/LoginPage';
-import ItemPage from "./pages/ItemPage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import OutfitManagerPage from "./pages/OutfitManagerPage";
+
 function App() {
-    return (
-        <BrowserRouter>
-            <Routes>
-                <Route path="/" element={<LoginPage />} />
-                <Route path="/items" element={<ItemPage />} />
-            </Routes>
-        </BrowserRouter>
-    );
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/outfits" element={<OutfitManagerPage />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
+
 export default App;
