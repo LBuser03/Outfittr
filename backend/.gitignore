@@ -1,0 +1,4 @@
+# --- SENSITIVE DATA (CRITICAL) ---
+.env
+.env.local
+.env.production

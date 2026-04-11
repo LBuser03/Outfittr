@@ -7,6 +7,7 @@
 # This prevents uploading thousands of files that 'npm install' can recreate
 node_modules/
 frontend/node_modules/
+backend/node_modules/
 
 # --- BUILD OUTPUTS ---
 # We don't track these because GitHub Actions builds them fresh every time

@@ -32,13 +32,12 @@ Outfittr is a **MERN stack** application (MongoDB, Express, React, Node.js) exte
 
 ## Project Structure
 
-### `/` — Backend (Express / Node.js — the "E" and "N" in MERN)
+### `/backend` — Backend (Express / Node.js — the "E" and "N" in MERN)
 The REST API server that handles all business logic and database access.
 
 - **`server.js`** — Express entry point. Connects to MongoDB and starts the server on port `5000`.
 - **`api.js`** — Express route handlers for all API endpoints (`/api/login`, `/api/register`, `/api/additem`, `/api/searchitems`).
 - **`createJWT.js`** — Utility for creating, refreshing, and validating JSON Web Tokens used for session auth.
-- **`tokenStorage.ts`** — Client-side token storage helpers.
 
 ### `/frontend` — Web Frontend (React + TypeScript + Vite)
 A single-page application for the browser.
@@ -88,16 +87,16 @@ All authenticated endpoints require a `jwtToken` in the request body. Tokens are
 ### Backend
 
 ```bash
-# From the root directory
+cd backend
 npm install
 npm start
 ```
 
-The server runs on `http://localhost:5000`. Requires a `.env` file in the root with:
+The server runs on `http://localhost:5000`. Requires a `.env` file in `backend/` with:
 
 ```env
 MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
+ACCESS_TOKEN_SECRET=your_jwt_secret
 ```
 
 ### Frontend
