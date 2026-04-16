@@ -33,7 +33,7 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           login: email.trim(),
-          password,
+          password
         }),
       });
 
@@ -49,8 +49,6 @@ export default function LoginPage() {
       storeAccessToken(result.accessToken);
       storeUser({
         id: payload.userId,
-        firstName: payload.firstName,
-        lastName: payload.lastName,
         email: email.trim(),
       });
 

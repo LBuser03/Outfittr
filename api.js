@@ -6,133 +6,97 @@ exports.setApp = function (app, client) {
 
     // ─── LOGIN ───────────────────────────────────────────────────────────────────
     app.post('/api/login', async (req, res, next) => {
-        // incoming: login, password
-        // outgoing: id, firstName, lastName, error
-        const { login, password } = req.body;
+        const { login, password } = req.body; 
         const db = client.db('OutfittrDB');
-        const results = await db.collection('Users')
-            .find({ login: login, password: password })
-            .toArray();
+        
+        try {
+            const user = await db.collection('Users').findOne({ 
+                email: login, 
+                password: password 
+            });
 
-        var id = -1;
-        var fn = '';
-        var ln = '';
-        var ret;
-
-        if (results.length > 0) {
-            id = results[0]._id;
-            fn = results[0].firstName || results[0].login || 'Member';
-            ln = results[0].lastName || '';
-            try {
-                ret = token.createToken(fn, ln, id);
-            } catch (e) {
-                ret = { error: e.message };
+            if (user) {
+                const ret = token.createToken(user._id);
+                res.status(200).json(ret);
+            } else {
+                res.status(401).json({ error: 'Email/Password incorrect' });
             }
-        } else {
-            ret = { error: 'Login/Password incorrect' };
+        } catch (e) {
+            res.status(500).json({ error: e.message });
         }
-
-        res.status(200).json(ret);
     });
 
     // ─── REGISTER ─────────────────────────────────────────────────────────────
     app.post('/api/register', async (req, res, next) => {
-        // incoming: login, password
-        // outgoing: error, jwtToken
-        const { login, password, firstName, lastName } = req.body;
+        const { email, password } = req.body;
 
         try {
             const db = client.db('OutfittrDB');
 
-            // ensure login is unique
-            const existing = await db.collection('Users').findOne({ login: login });
+            const existing = await db.collection('Users').findOne({ email: email });
             if (existing) {
-                res.status(200).json({ error: 'Login already exists', jwtToken: '' });
+                res.status(200).json({ error: 'Email already exists', accessToken: '' });
                 return;
             }
 
-            const savedFirstName = (firstName || login || 'Member').trim();
-            const savedLastName = (lastName || '').trim();
             const newUser = {
-                login: login,
-                password: password,
-                firstName: savedFirstName,
-                lastName: savedLastName
+                email: email,
+                password: password
             };
-            const result = await db.collection('Users').insertOne(newUser);
 
+            const result = await db.collection('Users').insertOne(newUser);
             const id = result.insertedId;
+
             var ret;
             try {
-                ret = token.createToken(savedFirstName, savedLastName, id);
+                ret = token.createToken(id);
             } catch (e) {
-                ret = { error: e.message, jwtToken: '' };
+                ret = { error: e.message, accessToken: '' };
             }
 
             res.status(200).json(ret);
         } catch (e) {
-            res.status(500).json({ error: e.toString(), jwtToken: '' });
+            res.status(500).json({ error: e.toString(), accessToken: '' });
         }
     });
 
     // ─── ADD ITEM ─────────────────────────────────────────────────────────────────
     app.post('/api/additem', async (req, res, next) => {
-        // incoming: userId, item, jwtToken
-        // outgoing: error, jwtToken
         const { userId, item, jwtToken } = req.body;
 
-        // JWT expiry check
-        try {
-            if (token.isExpired(jwtToken)) {
-                var r = { error: 'The JWT is no longer valid', jwtToken: '' };
-                res.status(200).json(r);
-                return;
-            }
-        } catch (e) {
-            console.log(e.message);
+        if (token.isExpired(jwtToken)) {
+            return res.status(200).json({ error: 'The JWT is no longer valid', accessToken: '' });
         }
 
         const newItem = { Item: item, UserId: userId };
-        var error = '';
+        let error = '';
 
         try {
             const db = client.db('OutfittrDB');
-            const result = await db.collection('Items').insertOne(newItem);
+            await db.collection('Items').insertOne(newItem);
         } catch (e) {
             error = e.toString();
         }
 
-        // Refresh token
-        var refreshedToken = null;
+        let refreshedToken = null;
         try {
             refreshedToken = token.refresh(jwtToken);
         } catch (e) {
-            console.log(e.message);
+            console.log("Refresh error: " + e.message);
         }
 
-        var ret = { error: error, jwtToken: refreshedToken };
-        res.status(200).json(ret);
+        res.status(200).json({ error: error, accessToken: refreshedToken.accessToken });
     });
 
     // ─── SEARCH ITEMS ─────────────────────────────────────────────────────────────
     app.post('/api/searchitems', async (req, res, next) => {
-        // incoming: userId, search, jwtToken
-        // outgoing: results[], error, jwtToken
-        var error = '';
         const { userId, search, jwtToken } = req.body;
 
-        // JWT expiry check
-        try {
-            if (token.isExpired(jwtToken)) {
-                var r = { error: 'The JWT is no longer valid', jwtToken: '' };
-                res.status(200).json(r);
-                return;
-            }
-        } catch (e) {
-            console.log(e.message);
+        if (token.isExpired(jwtToken)) {
+            return res.status(200).json({ error: 'The JWT is no longer valid', accessToken: '' });
         }
 
-        var _search = search.trim();
+        const _search = search.trim();
         const db = client.db('OutfittrDB');
         const results = await db.collection('Items')
             .find({
@@ -141,139 +105,15 @@ exports.setApp = function (app, client) {
             })
             .toArray();
 
-        var _ret = [];
-        for (var i = 0; i < results.length; i++) {
-            _ret.push(results[i].Item);
-        }
+        const _ret = results.map(doc => doc.Item);
 
-        // Refresh token
-        var refreshedToken = null;
+        let refreshedToken = null;
         try {
             refreshedToken = token.refresh(jwtToken);
         } catch (e) {
-            console.log(e.message);
+            console.log("Refresh error: " + e.message);
         }
 
-        var ret = { results: _ret, error: error, jwtToken: refreshedToken };
-        res.status(200).json(ret);
+        res.status(200).json({ results: _ret, error: '', accessToken: refreshedToken.accessToken });
     });
 }
-
-// app.post('/api/additem', async (req, res) => {
-//     const { userId, item } = req.body;
-//     const newItem = { Item: item, UserId: userId };
-
-    
-
-//     try {
-//         const db = client.db('OutfittrDB');
-//         await db.collection('Items').insertOne(newItem);
-//         res.status(200).json({ error: '' });
-//     } catch (e) {
-//         res.status(500).json({ error: e.toString() });
-//     }
-// });
-
-
-// app.post('/api/login', async (req, res, next) => {
-//     // incoming: login, password
-//     // outgoing: id, firstName, lastName, error
-//     var error = '';
-//     const { login, password } = req.body;
-//     const db = client.db('OutfittrDB');
-//     const results = await
-//         db.collection('Users').find({ Login: login, Password: password }).toArray
-//             ();
-//     var id = -1;
-//     var fn = '';
-//     var ln = '';
-//     var ret;
-//     if (results.length > 0) {
-//         id = results[0].UserId;
-//         fn = results[0].FirstName;
-//         ln = results[0].LastName;
-//         try {
-//             const token = require("./createJWT.js");
-//             ret = token.createToken(fn, ln, id);
-//         }
-//         catch (e) {
-//             ret = { error: e.message };
-//         }
-//     }
-//     else {
-//         ret = { error: "Login/Password incorrect" };
-//     }
-//     res.status(200).json(ret);
-// });
-
-// app.post('/api/searchitems', async (req, res) => {
-//     const { userId, search } = req.body;
-//     const _search = search.trim();
-
-//     try {
-//         const db = client.db('OutfittrDB');
-//         const results = await db.collection('Items')
-//             .find({ "Item": { $regex: _search + '.*', $options: 'i' } })
-//             .toArray();
-
-//         const itemNames = results.map(doc => doc.Item);
-//         res.status(200).json({ results: itemNames, error: '' });
-//     } catch (e) {
-//         res.status(500).json({ error: e.toString() });
-//     }
-// });
-
-// require('express');
-// require('mongodb');
-// exports.setApp = function (app, client) {
-//     app.post('/api/additem', async (req, res, next) => {
-//         // incoming: userId, color
-//         // outgoing: error
-//         const { userId, item } = req.body;
-//         const newItem = { Item: item, UserId: userId };
-//         var error = '';
-//         try {
-//             const db = client.db('OutfittrDB');
-//             const result = db.collection('Items').insertOne(newItem);
-//         }
-//         catch (e) {
-//             error = e.toString();
-//         }
-//         itemList.push(item);
-//         var ret = { error: error };
-//         res.status(200).json(ret);
-//     });
-//     app.post('/api/login', async (req, res, next) => {
-//         // incoming: login, password
-//         // outgoing: id, firstName, lastName, error
-//         var error = '';
-//         const { login, password } = req.body;
-//         const db = client.db('OutfittrDB');
-//         const results = await db.collection('Users').find({ Login: login, Password: password }).toArray();
-//         var id = -1;
-//         var fn = '';
-//         var ln = '';
-//         if (results.length > 0) {
-//             id = results[0].UserID;
-//             fn = results[0].FirstName;
-//             ln = results[0].LastName;
-//         }
-//         var ret = { id: id, firstName: fn, lastName: ln, error: '' };
-//         res.status(200).json(ret);
-//     });
-//     app.post('/api/searchitems', async (req, res, next) => {
-//         // incoming: userId, search
-//         // outgoing: results[], error
-//         var error = '';
-//         const { userId, search } = req.body;
-//         var _search = search.trim();
-//         const db = client.db('OutfittrDB');
-//         const results = await db.collection('Items').find({ "Item": { $regex: _search + '.*', $options: 'i' } }).toArray();
-//         var _ret = [];
-//         for (var i = 0; i < results.length; i++) {
-//             _ret.push(results[i].Item);
-//         }
-//         var ret = { results: _ret, error: error };
-//         res.status(200).json(ret);
-//     });
-// }
