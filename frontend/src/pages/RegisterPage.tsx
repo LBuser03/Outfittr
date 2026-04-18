@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import AuthSprayLayer from "../components/AuthSprayLayer";
 import { buildApiPath } from "../utils/api";
 import {
   decodeToken,
-  getAccessToken,
   storeAccessToken,
   storeUser,
 } from "../utils/session";
@@ -17,10 +16,6 @@ export default function RegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const navigate = useNavigate();
-
-  if (getAccessToken()) {
-    return <Navigate replace to="/outfits" />;
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +33,7 @@ export default function RegisterPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          login: email.trim(),
+          email: email.trim(),
           password,
         }),
       });

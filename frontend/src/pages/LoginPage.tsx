@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import AuthSprayLayer from "../components/AuthSprayLayer";
 import { buildApiPath } from "../utils/api";
 import {
   decodeToken,
   storeAccessToken,
   storeUser,
-  getAccessToken,
 } from "../utils/session";
 
 export default function LoginPage() {
@@ -16,10 +15,6 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const navigate = useNavigate();
-
-  if (getAccessToken()) {
-    return <Navigate replace to="/outfits" />;
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
