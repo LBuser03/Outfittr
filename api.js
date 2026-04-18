@@ -65,7 +65,6 @@ exports.setApp = function (app, client) {
 
     // ─── ADD ITEM ─────────────────────────────────────────────────────────────────
 app.post('/api/additem', upload.single('image'), async (req, res, next) => {
-    // 1. In FormData, text fields are in req.body
     const { userId, name, type, tags, notes, jwtToken } = req.body;
 
     if (token.isExpired(jwtToken)) {

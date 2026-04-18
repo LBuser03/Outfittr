@@ -108,7 +108,7 @@ function ItemUI() {
                     type="file" 
                     id="itemImage" 
                     accept="image/*" 
-                    className="buttons" // Using your existing class for consistent styling
+                    className="buttons"
                 />
             </div>
 
