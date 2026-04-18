@@ -55,6 +55,233 @@ function makeNewItem(type: Item['type'] = 'SHIRT'): Item {
     };
 }
 
+function normalizeItem(rawItem: any): Item {
+    let tags: string[] = [];
+
+    if (Array.isArray(rawItem.tags)) {
+        tags = rawItem.tags;
+    } else if (typeof rawItem.tags === "string") {
+        try {
+            const parsedTags = JSON.parse(rawItem.tags);
+            tags = Array.isArray(parsedTags)
+                ? parsedTags
+                : rawItem.tags.split(",").map((tag: string) => tag.trim()).filter(Boolean);
+        } catch {
+            tags = rawItem.tags.split(",").map((tag: string) => tag.trim()).filter(Boolean);
+        }
+    }
+
+    return {
+        itemId: rawItem.itemId || rawItem._id || Date.now().toString(),
+        name: rawItem.name || "",
+        type: rawItem.type || "SHIRT",
+        tags,
+        imageURL: rawItem.imageURL || "",
+        notes: rawItem.notes || "",
+    };
+}
+
+function loadImage(file: File): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const image = new Image();
+
+        image.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve(image);
+        };
+        image.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error("Could not load image."));
+        };
+        image.src = url;
+    });
+}
+
+function colorDistance(
+    r1: number,
+    g1: number,
+    b1: number,
+    r2: number,
+    g2: number,
+    b2: number
+) {
+    return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2);
+}
+
+function getPixelIndex(x: number, y: number, width: number) {
+    return (y * width + x) * 4;
+}
+
+async function autoTrimClothingImage(file: File): Promise<File> {
+    const image = await loadImage(file);
+    const maxSide = 1400;
+    const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+
+    if (!context) {
+        return file;
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+    context.drawImage(image, 0, 0, width, height);
+
+    const imageData = context.getImageData(0, 0, width, height);
+    const { data } = imageData;
+    const edgeSamples: Array<[number, number]> = [];
+    const sampleStep = Math.max(8, Math.floor(Math.min(width, height) / 28));
+
+    for (let x = 0; x < width; x += sampleStep) {
+        edgeSamples.push([x, 0], [x, height - 1]);
+    }
+
+    for (let y = 0; y < height; y += sampleStep) {
+        edgeSamples.push([0, y], [width - 1, y]);
+    }
+
+    const background = edgeSamples.reduce(
+        (sum, [x, y]) => {
+            const index = getPixelIndex(x, y, width);
+            return {
+                r: sum.r + data[index],
+                g: sum.g + data[index + 1],
+                b: sum.b + data[index + 2],
+            };
+        },
+        { r: 0, g: 0, b: 0 }
+    );
+
+    const bgR = background.r / edgeSamples.length;
+    const bgG = background.g / edgeSamples.length;
+    const bgB = background.b / edgeSamples.length;
+    const backgroundBrightness = Math.max(bgR, bgG, bgB) / 255;
+    const backgroundSaturation = (Math.max(bgR, bgG, bgB) - Math.min(bgR, bgG, bgB)) / 255;
+    const backgroundThreshold = backgroundBrightness > 0.72 && backgroundSaturation < 0.18 ? 58 : 44;
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+            const index = (y * width + x) * 4;
+            const red = data[index];
+            const green = data[index + 1];
+            const blue = data[index + 2];
+            const alpha = data[index + 3];
+            const brightness = Math.max(red, green, blue) / 255;
+            const saturation = (Math.max(red, green, blue) - Math.min(red, green, blue)) / 255;
+            const distanceFromBackground = colorDistance(red, green, blue, bgR, bgG, bgB);
+            const differsFromBackground = distanceFromBackground > backgroundThreshold;
+            const visibleTransparentPixel = alpha > 24 && alpha < 245;
+            const likelyPlainBackground =
+                alpha > 24 &&
+                distanceFromBackground < backgroundThreshold &&
+                (
+                    backgroundBrightness > 0.72 ||
+                    (brightness > 0.76 && saturation < 0.16)
+                );
+            const likelyForeground =
+                alpha > 24 &&
+                !likelyPlainBackground &&
+                (visibleTransparentPixel || differsFromBackground || saturation > 0.18 || brightness < 0.82);
+
+            if (likelyPlainBackground) {
+                data[index + 3] = distanceFromBackground > backgroundThreshold - 8 ? 70 : 0;
+            }
+
+            if (likelyForeground) {
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x);
+                maxY = Math.max(maxY, y);
+            }
+        }
+    }
+
+    if (maxX < minX || maxY < minY) {
+        return file;
+    }
+
+    context.putImageData(imageData, 0, 0);
+
+    const trimWidth = maxX - minX + 1;
+    const trimHeight = maxY - minY + 1;
+    const padding = Math.round(Math.max(trimWidth, trimHeight) * 0.05);
+    const cropX = Math.max(0, minX - padding);
+    const cropY = Math.max(0, minY - padding);
+    const cropWidth = Math.min(width - cropX, trimWidth + padding * 2);
+    const cropHeight = Math.min(height - cropY, trimHeight + padding * 2);
+    const output = document.createElement("canvas");
+    const outputContext = output.getContext("2d");
+
+    if (!outputContext) {
+        return file;
+    }
+
+    output.width = cropWidth;
+    output.height = cropHeight;
+    outputContext.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+
+    const blob = await new Promise<Blob | null>((resolve) => output.toBlob(resolve, "image/png"));
+
+    if (!blob) {
+        return file;
+    }
+
+    const trimmedName = file.name.replace(/\.[^.]+$/, "") + "-trimmed.png";
+    return new File([blob], trimmedName, { type: "image/png" });
+}
+
+function OutfitPreview({ getSlotItem }: { getSlotItem: (type: Item['type']) => Item | undefined }) {
+    const previewSlots: Item['type'][] = ['HAT', 'SHIRT', 'PANTS', 'SHOES'];
+
+    return (
+        <div className="outfit-preview-stage" aria-label="Rotating outfit preview">
+            <div className="outfit-preview-shadow" />
+            <div className="outfit-preview-model">
+                <div className="model-head professor-head">
+                    <img src="/professor.png" alt="Professor model head" />
+                </div>
+                <div className="model-neck" />
+                <div className="model-arm model-arm-left" />
+                <div className="model-arm model-arm-right" />
+                <div className="model-leg model-leg-left" />
+                <div className="model-leg model-leg-right" />
+                <div className="model-body">
+                    {previewSlots.map(type => {
+                        const item = getSlotItem(type);
+                        const label = item?.name?.trim() || type;
+
+                        return (
+                            <div
+                                key={type}
+                                className={`model-piece model-piece-${type.toLowerCase()} ${item ? 'filled' : 'empty'} ${item?.imageURL ? 'has-image' : ''}`}
+                            >
+                                {item?.imageURL && type === 'SHOES' ? (
+                                    <>
+                                        <img className="shoe-image shoe-image-left" src={item.imageURL} alt={`${label} left shoe`} />
+                                        <img className="shoe-image shoe-image-right" src={item.imageURL} alt={`${label} right shoe`} />
+                                    </>
+                                ) : item?.imageURL ? (
+                                    <img src={item.imageURL} alt={label} />
+                                ) : (
+                                    <span>{item ? label : type}</span>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+                <div className="model-stand-base" />
+            </div>
+        </div>
+    );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 function OutfitManagerPage() {
@@ -96,9 +323,9 @@ function OutfitManagerPage() {
             // Note: If your backend returns "results", use res.results. 
             // If it returns "items", use res.items.
             if (res.results) {
-                setAllItems(res.results);
+                setAllItems(res.results.map(normalizeItem));
             } else if (res.items) {
-                setAllItems(res.items);
+                setAllItems(res.items.map(normalizeItem));
             }
         } catch (e) {
             console.error("Error fetching wardrobe:", e);
@@ -234,18 +461,26 @@ function OutfitManagerPage() {
                 body: formData 
             });
 
-            const res = await response.json();
+            const responseText = await response.text();
+            let res;
+
+            try {
+                res = JSON.parse(responseText);
+            } catch {
+                throw new Error(responseText.slice(0, 160) || "Upload endpoint did not return JSON.");
+            }
 
             if (res.error) {
                 alert("Error: " + res.error);
                 return;
             }
 
-            const savedItem: Item = {
+            const savedItem = normalizeItem({
                 ...item,
-                itemId: res.id || item.itemId,
-                imageURL: res.imageURL || item.imageURL 
-            };
+                ...(res.item || {}),
+                itemId: res.id || res.item?.itemId || item.itemId,
+                imageURL: res.imageURL || res.item?.imageURL || item.imageURL,
+            });
 
             setAllItems(prev => {
                 const exists = prev.find(i => i.itemId === savedItem.itemId);
@@ -289,10 +524,21 @@ function OutfitManagerPage() {
 
     return (
         <>
-            <div className="graffiti-wrapper" />
+            <div className="graffiti-wrapper outfit-backdrop" />
             <div className="om-page">
                 <nav className="om-navbar">
-                    <span className="om-logo">OUTFITTR</span>
+                    <span className="om-logo nav-bubble-title" aria-label="OUTFITTR">
+                        <span className="bubble-title-line">
+                            <span className="bubble-char">O</span>
+                            <span className="bubble-char">U</span>
+                            <span className="bubble-char">T</span>
+                            <span className="bubble-char">F</span>
+                            <span className="bubble-char">I</span>
+                            <span className="bubble-char">T</span>
+                            <span className="bubble-char">T</span>
+                            <span className="bubble-char">R</span>
+                        </span>
+                    </span>
                     <div className="om-nav-center">
                         <button className="om-btn-cyan" onClick={() => openNewItem()}>+ NEW ITEM</button>
                         <button className="om-btn-yellow" onClick={handleNewOutfit}>+ NEW OUTFIT</button>
@@ -315,7 +561,6 @@ function OutfitManagerPage() {
                         </div>
 
                         <div className="om-stand">
-                            <div className="om-stand-figure">🪆</div>
                             <div className="om-slots">
                                 {SLOT_ORDER.map(type => {
                                     const item = getSlotItem(type);
@@ -346,6 +591,10 @@ function OutfitManagerPage() {
                                 </button>
                             )}
                         </div>
+                    </div>
+
+                    <div className="om-center">
+                        <OutfitPreview getSlotItem={getSlotItem} />
                     </div>
 
                     <div className="om-right">
@@ -602,12 +851,24 @@ function ItemEditModal({ item, isNew, onSave, onDelete, onClose }: ItemEditModal
     
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewURL, setPreviewURL]     = useState<string | null>(null);
+    const [isTrimmingImage, setIsTrimmingImage] = useState(false);
 
-    function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            setSelectedFile(file);
-            setPreviewURL(URL.createObjectURL(file)); 
+            setIsTrimmingImage(true);
+
+            try {
+                const trimmedFile = await autoTrimClothingImage(file);
+                setSelectedFile(trimmedFile);
+                setPreviewURL(URL.createObjectURL(trimmedFile));
+            } catch (error) {
+                console.error("Auto trim failed:", error);
+                setSelectedFile(file);
+                setPreviewURL(URL.createObjectURL(file));
+            } finally {
+                setIsTrimmingImage(false);
+            }
         }
     }
 
@@ -649,6 +910,10 @@ function ItemEditModal({ item, isNew, onSave, onDelete, onClose }: ItemEditModal
                     )}
                 </div>
 
+                {isTrimmingImage && (
+                    <p className="om-trim-status">Auto-trimming image for the model...</p>
+                )}
+
                 <div style={{ marginBottom: "15px" }}>
                     <label style={{ fontSize: "0.8rem", color: "#ccc", display: "block", marginBottom: "5px" }}>
                         UPLOAD PHOTO:
@@ -674,8 +939,8 @@ function ItemEditModal({ item, isNew, onSave, onDelete, onClose }: ItemEditModal
                 <textarea className="om-input om-textarea" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes (optional)" />
 
                 <div className="om-modal-actions">
-                    <button className="om-btn-yellow" onClick={handleInternalSave}>
-                        {selectedFile ? 'UPLOAD & SAVE' : 'SAVE'}
+                    <button className="om-btn-yellow" onClick={handleInternalSave} disabled={isTrimmingImage}>
+                        {isTrimmingImage ? 'TRIMMING...' : selectedFile ? 'UPLOAD & SAVE' : 'SAVE'}
                     </button>
                     {!isNew && (
                         <button className="om-btn-danger" onClick={() => onDelete(item.itemId)}>DELETE</button>

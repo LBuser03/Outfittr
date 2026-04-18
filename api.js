@@ -71,7 +71,11 @@ app.post('/api/additem', upload.single('image'), async (req, res, next) => {
         return res.status(200).json({ error: 'The JWT is no longer valid', accessToken: '' });
     }
 
-    const imageURL = req.file ? req.file.path : '';
+    const imageURL = req.file
+        ? req.file.path?.startsWith('http')
+            ? req.file.path
+            : `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
+        : '';
 
     const newItem = { 
         UserId: userId, 
@@ -85,7 +89,8 @@ app.post('/api/additem', upload.single('image'), async (req, res, next) => {
     let error = '';
     try {
         const db = client.db('OutfittrDB');
-        await db.collection('Items').insertOne(newItem);
+        const result = await db.collection('Items').insertOne(newItem);
+        newItem.itemId = result.insertedId.toString();
     } catch (e) {
         error = e.toString();
     }
@@ -101,6 +106,8 @@ app.post('/api/additem', upload.single('image'), async (req, res, next) => {
     res.status(200).json({ 
         error: error, 
         accessToken: refreshedToken.accessToken,
+        id: newItem.itemId,
+        imageURL: newItem.imageURL,
         item: newItem 
     });
 });

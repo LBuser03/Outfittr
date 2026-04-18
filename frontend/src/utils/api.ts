@@ -1,5 +1,5 @@
 const appName = "outfittr.xyz";
-const developmentApiPort = "5000";
+const developmentApiPort = "5001";
 
 export function buildApiPath(route: string) {
   if (import.meta.env.MODE !== "development") {
