@@ -8,9 +8,10 @@ import {
   storeUser,
 } from "../utils/session";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -18,24 +19,29 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    setIsSubmitting(true);
     setError("");
 
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
-      const response = await fetch(buildApiPath("api/login"), {
+      const response = await fetch(buildApiPath("api/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          login: email.trim(),
-          password
+          email: email.trim(),
+          password,
         }),
       });
 
       const result = await response.json();
 
       if (!result.accessToken) {
-        setError(result.error || "Unable to sign in.");
+        setError(result.error || "Unable to create account.");
         return;
       }
 
@@ -44,6 +50,8 @@ export default function LoginPage() {
       storeAccessToken(result.accessToken);
       storeUser({
         id: payload.userId,
+        firstName: payload.firstName,
+        lastName: payload.lastName,
         email: email.trim(),
       });
 
@@ -77,33 +85,37 @@ export default function LoginPage() {
 
       <div className="login-container auth-container">
         <div className="login-card">
-          <h2 className="graffiti-title bubble-title" aria-label="OUTFITTR">
+          <h2 className="graffiti-title bubble-title" aria-label="JOIN THE CREW">
             <span className="bubble-title-line">
+              <span className="bubble-char">J</span>
               <span className="bubble-char">O</span>
-              <span className="bubble-char">U</span>
-              <span className="bubble-char">T</span>
-              <span className="bubble-char">F</span>
               <span className="bubble-char">I</span>
-              <span className="bubble-char">T</span>
-              <span className="bubble-char">T</span>
+              <span className="bubble-char">N</span>
+              <span className="bubble-char bubble-char-space">T</span>
+              <span className="bubble-char">H</span>
+              <span className="bubble-char">E</span>
+            </span>
+            <span className="bubble-title-line">
+              <span className="bubble-char">C</span>
               <span className="bubble-char">R</span>
+              <span className="bubble-char">E</span>
+              <span className="bubble-char">W</span>
             </span>
           </h2>
-          <p className="card-copy bubble-copy" aria-label="Sign in to search your wardrobe and add the next piece to your collection.">
-            <span className="copy-word">Sign</span>
-            <span className="copy-word">in</span>
-            <span className="copy-word">to</span>
-            <span className="copy-word">search</span>
-            <span className="copy-word">your</span>
-            <span className="copy-word">wardrobe</span>
+          <p className="card-copy bubble-copy" aria-label="Build a personal outfit board for demos, styling ideas, and managing your outfits.">
+            <span className="copy-word">Build</span>
+            <span className="copy-word">a</span>
+            <span className="copy-word">personal</span>
+            <span className="copy-word">outfit</span>
+            <span className="copy-word">board</span>
+            <span className="copy-word">for</span>
+            <span className="copy-word">demos</span>
+            <span className="copy-word">styling</span>
+            <span className="copy-word">ideas</span>
             <span className="copy-word">and</span>
-            <span className="copy-word">add</span>
-            <span className="copy-word">the</span>
-            <span className="copy-word">next</span>
-            <span className="copy-word">piece</span>
-            <span className="copy-word">to</span>
+            <span className="copy-word">managing</span>
             <span className="copy-word">your</span>
-            <span className="copy-word">collection</span>
+            <span className="copy-word">outfits</span>
           </p>
 
           <form onSubmit={handleSubmit}>
@@ -123,17 +135,25 @@ export default function LoginPage() {
               required
             />
 
+            <input
+              type="password"
+              placeholder="CONFIRM"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+
             {error ? <p className="form-feedback error-text">{error}</p> : null}
 
             <button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "ENTERING..." : "ENTER"}
+              {isSubmitting ? "CREATING..." : "SIGN UP"}
             </button>
           </form>
 
           <p className="link-text">
-            New here?{" "}
-            <span className="doodle-link" onClick={() => navigate("/register")}>
-              SIGN UP
+            Already in?{" "}
+            <span className="doodle-link" onClick={() => navigate("/")}>
+              LOGIN
             </span>
           </p>
         </div>
