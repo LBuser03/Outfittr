@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAccessToken } from "../utils/session";
+import { clearSession, getAccessToken, storeAccessToken } from "../utils/session";
 import { buildPath } from '../components/Path';
 
 
@@ -310,15 +310,26 @@ function OutfitManagerPage() {
         try {
             const response = await fetch(buildPath('api/searchitems'), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
                 body: JSON.stringify({
-                    userId: userId,
-                    search: "", 
-                    jwtToken: token
+                    search: ""
                 })
             });
 
             const res = await response.json();
+            if (response.status === 401) {
+                clearSession();
+                navigate('/');
+                return;
+            }
+
+            if (response.status === 403) {
+                console.error("Wardrobe access blocked:", res.error);
+                return;
+            }
 
             // Note: If your backend returns "results", use res.results. 
             // If it returns "items", use res.items.
@@ -326,6 +337,10 @@ function OutfitManagerPage() {
                 setAllItems(res.results.map(normalizeItem));
             } else if (res.items) {
                 setAllItems(res.items.map(normalizeItem));
+            }
+
+            if (res.accessToken) {
+                storeAccessToken(res.accessToken);
             }
         } catch (e) {
             console.error("Error fetching wardrobe:", e);
@@ -439,7 +454,6 @@ function OutfitManagerPage() {
         }
 
         const formData = new FormData();
-        formData.append('userId', userId);
         
         if (item.itemId && !isNewItem) {
             formData.append('itemId', item.itemId);
@@ -449,7 +463,6 @@ function OutfitManagerPage() {
         formData.append('type', item.type);
         formData.append('notes', item.notes);
         formData.append('tags', JSON.stringify(item.tags));
-        formData.append('jwtToken', token);
 
         if (file) {
             formData.append('image', file);
@@ -458,6 +471,9 @@ function OutfitManagerPage() {
         try {
             const response = await fetch(buildPath('api/additem'), {
                 method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
                 body: formData 
             });
 
@@ -470,9 +486,19 @@ function OutfitManagerPage() {
                 throw new Error(responseText.slice(0, 160) || "Upload endpoint did not return JSON.");
             }
 
+            if (response.status === 401) {
+                clearSession();
+                navigate('/');
+                return;
+            }
+
             if (res.error) {
                 alert("Error: " + res.error);
                 return;
+            }
+
+            if (res.accessToken) {
+                storeAccessToken(res.accessToken);
             }
 
             const savedItem = normalizeItem({
@@ -517,8 +543,7 @@ function OutfitManagerPage() {
     }
 
     function handleLogout() {
-        localStorage.removeItem('user_data');
-        localStorage.removeItem('token_data');
+        clearSession();
         navigate('/');
     }
 

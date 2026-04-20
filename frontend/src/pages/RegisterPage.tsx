@@ -13,6 +13,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccessMessage("");
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
@@ -40,22 +42,29 @@ export default function RegisterPage() {
 
       const result = await response.json();
 
-      if (!result.accessToken) {
+      if (result.accessToken) {
+        const payload = decodeToken(result.accessToken);
+
+        storeAccessToken(result.accessToken);
+        storeUser({
+          id: payload.userId,
+          firstName: payload.firstName,
+          lastName: payload.lastName,
+          email: email.trim(),
+        });
+
+        navigate("/outfits");
+        return;
+      }
+
+      if (!response.ok || result.error) {
         setError(result.error || "Unable to create account.");
         return;
       }
 
-      const payload = decodeToken(result.accessToken);
-
-      storeAccessToken(result.accessToken);
-      storeUser({
-        id: payload.userId,
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        email: email.trim(),
-      });
-
-      navigate("/outfits");
+      setSuccessMessage(
+        result.message || "Check your email for a verification link before signing in."
+      );
     } catch (submitError) {
       setError("We couldn't reach the server. Please try again.");
     } finally {
@@ -144,6 +153,9 @@ export default function RegisterPage() {
             />
 
             {error ? <p className="form-feedback error-text">{error}</p> : null}
+            {successMessage ? (
+              <p className="form-feedback">{successMessage}</p>
+            ) : null}
 
             <button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "CREATING..." : "SIGN UP"}
