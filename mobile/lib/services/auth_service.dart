@@ -135,6 +135,34 @@ class AuthService
     }
   }
 
+  // Calls POST /api/resend-verification with the given email. Returns a generic
+  // success message from the backend even if the address isn't registered, so
+  // the caller can always surface the message string without leaking account info.
+  static Future<AuthResult> resendVerification(String email) async
+  {
+    try
+    {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/resend-verification'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (!response.statusCode.toString().startsWith('2'))
+      {
+        return AuthResult.fail((body['error'] ?? 'Unable to resend verification email').toString());
+      }
+
+      return AuthResult.ok();
+    }
+    catch (e)
+    {
+      return AuthResult.fail('Network error: $e');
+    }
+  }
+
   // Clears the stored token — used on logout or when the server reports an expired JWT.
   static Future<void> logout() async
   {

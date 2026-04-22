@@ -26,7 +26,12 @@ class _LoginScreenState extends State<LoginScreen>
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _submitting = false;
+  bool _resending = false;
   String? _error;
+  String? _resendMessage;
+  // True when the backend told us the account isn't verified yet — shows the
+  // resend button exactly like the React frontend's showResend state.
+  bool _showResend = false;
 
   @override
   void dispose()
@@ -49,20 +54,48 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
 
-    setState(() { _submitting = true; _error = null; });
+    setState(() { _submitting = true; _error = null; _resendMessage = null; _showResend = false; });
     final result = await AuthService.login(email, password);
     if (!mounted) return;
     setState(() => _submitting = false);
 
     if (!result.success)
     {
-      setState(() => _error = result.error ?? 'Login failed');
+      final errorMsg = result.error ?? 'Login failed';
+      setState(() {
+        _error = errorMsg;
+        // Show the resend button only for the specific unverified-account error.
+        _showResend = errorMsg == 'Please verify your email before logging in';
+      });
       return;
     }
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const OutfitManagerScreen()),
     );
+  }
+
+  // Calls /api/resend-verification with the current email field value.
+  Future<void> _resend() async
+  {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty) return;
+
+    setState(() { _resending = true; _resendMessage = null; _error = null; });
+    final result = await AuthService.resendVerification(email);
+    if (!mounted) return;
+    setState(() => _resending = false);
+
+    if (!result.success)
+    {
+      setState(() => _error = result.error);
+      return;
+    }
+
+    setState(() {
+      _showResend = false;
+      _resendMessage = 'Verification email sent. Please check your inbox.';
+    });
   }
 
   @override
@@ -103,6 +136,23 @@ class _LoginScreenState extends State<LoginScreen>
                     if (_error != null) ...[
                       const SizedBox(height: 12),
                       Text(_error!, style: AppTextStyles.error, textAlign: TextAlign.center),
+                    ],
+                    if (_resendMessage != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        _resendMessage!,
+                        style: AppTextStyles.body.copyWith(color: AppColors.accentAqua),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                    if (_showResend) ...[
+                      const SizedBox(height: 12),
+                      GraffitiButton(
+                        label: _resending ? 'Sending...' : 'Resend verification email',
+                        variant: GraffitiButtonVariant.ghost,
+                        onPressed: (_resending || _emailCtrl.text.trim().isEmpty) ? null : _resend,
+                        busy: _resending,
+                      ),
                     ],
                     const SizedBox(height: 24),
                     GraffitiButton(

@@ -21,12 +21,12 @@ class GraffitiBackground extends StatelessWidget
         // Base solid dark color underneath everything.
         const ColoredBox(color: AppColors.bgDark),
 
-        // Pig texture overlay at low opacity with a subtle color filter, mirroring
+        // Background texture overlay at low opacity with a subtle color filter, mirroring
         // the frontend's contrast/brightness filter on the texture layer.
         Opacity(
           opacity: 0.18,
           child: Image.asset(
-            'assets/images/pig.jpg',
+            'assets/images/background.png',
             fit: BoxFit.cover,
             color: AppColors.bgDark,
             colorBlendMode: BlendMode.saturation,
