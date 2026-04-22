@@ -182,6 +182,12 @@ export default function LoginPage() {
           </form>
 
           <p className="link-text">
+            <span className="doodle-link" onClick={() => navigate("/forgot-password")}>
+              FORGOT PASSWORD?
+            </span>
+          </p>
+
+          <p className="link-text">
             New here?{" "}
             <span className="doodle-link" onClick={() => navigate("/register")}>
               SIGN UP
