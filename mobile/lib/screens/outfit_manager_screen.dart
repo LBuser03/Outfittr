@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../models/item.dart';
 import '../models/outfit.dart';
 import '../services/auth_service.dart';
+import '../services/item_service.dart';
 import '../services/outfit_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/graffiti_background.dart';
@@ -62,21 +63,14 @@ class _OutfitManagerScreenState extends State<OutfitManagerScreen>
       return;
     }
 
-    final outfits = result.data ?? [];
-    // Derive a flat items pool from whatever items came back embedded on outfits.
-    final Map<String, Item> itemsById = {};
-    for (final o in outfits)
-    {
-      for (final i in o.items)
-      {
-        itemsById[i.id] = i;
-      }
-    }
+    // Load items in parallel so the slot picker is always up to date.
+    final itemResult = await ItemService.searchItems('');
+    if (!mounted) return;
 
     setState(() {
       _loading = false;
-      _outfits = outfits;
-      _items = itemsById.values.toList();
+      _outfits = result.data ?? [];
+      _items = itemResult.success ? (itemResult.data ?? []) : [];
     });
   }
 
@@ -210,7 +204,7 @@ class _OutfitManagerScreenState extends State<OutfitManagerScreen>
           items: _items,
           onSaved: _load,
         ),
-        ItemsTab(items: _items),
+        ItemsTab(onItemsChanged: _load),
         OutfitsTab(
           outfits: _outfits,
           onEdit: _editOutfit,

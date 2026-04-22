@@ -22,8 +22,8 @@ class Item
   // Backend fields: _id, name, type, tags (string[]), notes, imageURL.
   factory Item.fromJson(Map<String, dynamic> json)
   {
-    // Mongo's _id can come back as a string or as { $oid: "..." } depending on serialization.
-    final rawId = json['_id'];
+    // Search results use MongoDB '_id'; add/edit responses use 'itemId'. Accept both.
+    final rawId = json['_id'] ?? json['itemId'];
     final id = rawId is Map ? (rawId['\$oid'] ?? '').toString() : (rawId ?? '').toString();
 
     // tags is a JSON array of strings; defensively handle null.
