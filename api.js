@@ -184,6 +184,22 @@ async function sendVerificationEmail(email, verificationLink) {
     });
 }
 
+async function sendResetEmail(email, resetLink) {
+    const transporter = getMailer();
+
+    if (!transporter) {
+        console.log(`Password reset link for ${email}: ${resetLink}`);
+        return;
+    }
+
+    await transporter.sendMail({
+        from: process.env.EMAIL_FROM || 'Outfittr <no-reply@example.com>',
+        to: email,
+        subject: 'Reset your Outfittr password',
+        text: `Reset your password by visiting: ${resetLink}\n\nThis link expires in 1 hour.`
+    });
+}
+
 function getBearerToken(req) {
     const header = req.headers.authorization || '';
     if (!header.startsWith('Bearer ')) {
@@ -360,6 +376,69 @@ exports.setApp = function (app, client) {
             });
         } catch (e) {
             return res.status(500).json({ error: 'Unable to resend verification email' });
+        }
+    });
+
+    app.post('/api/forgot-password', async (req, res) => {
+        const { email } = req.body;
+
+        try {
+            const db = client.db('OutfittrDB');
+            const user = await db.collection('Users').findOne({ email });
+
+            if (user) {
+                const resetToken = crypto.randomBytes(32).toString('hex');
+                const resetExpires = new Date(Date.now() + 60 * 60 * 1000);
+
+                await db.collection('Users').updateOne(
+                    { _id: user._id },
+                    { $set: { resetToken, resetExpires } }
+                );
+
+                const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+                const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
+                await sendResetEmail(email, resetLink);
+            }
+
+            return res.status(200).json({
+                message: 'If that account exists, a password reset email has been sent.'
+            });
+        } catch (e) {
+            return res.status(500).json({ error: 'Unable to process request' });
+        }
+    });
+
+    app.post('/api/reset-password', async (req, res) => {
+        const { token: resetToken, password } = req.body;
+
+        if (!resetToken || !password) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        if (!isPasswordValid(password)) {
+            return res.status(400).json({ error: PASSWORD_REQUIREMENTS_MESSAGE });
+        }
+
+        try {
+            const db = client.db('OutfittrDB');
+            const user = await db.collection('Users').findOne({ resetToken });
+
+            if (!user || !user.resetExpires || new Date(user.resetExpires) < new Date()) {
+                return res.status(400).json({ error: 'Invalid or expired reset token' });
+            }
+
+            const hashedPassword = await hashPassword(password);
+            await db.collection('Users').updateOne(
+                { _id: user._id },
+                {
+                    $set: { password: hashedPassword },
+                    $unset: { resetToken: '', resetExpires: '' }
+                }
+            );
+
+            return res.status(200).json({ message: 'Password has been reset. You can now sign in.' });
+        } catch (e) {
+            return res.status(500).json({ error: 'Unable to reset password' });
         }
     });
 

@@ -55,7 +55,7 @@ export default function VerifyPage() {
         )}
         {status === "error" && (
           <div>
-            <h2>Verification Error</h2>
+            <h2><p>Redirecting to sign in in 3 seconds...</p></h2>
             <p>{message}</p>
             <button onClick={() => navigate("/register")}>Back to Register</button>
             <button onClick={() => navigate("/")}>Go to Sign In</button>
