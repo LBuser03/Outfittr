@@ -262,7 +262,7 @@ body {
   align-items: center;
   gap: 0.06em;
   font-family: Impact, Haettenschweiler, "Arial Black", sans-serif;
-  font-weight: 900;
+  font-weight: 700;
   font-style: normal;
   position: relative;
   transform: rotate(-2deg);
@@ -281,17 +281,17 @@ body {
   line-height: 0.82;
   padding: 0 0.02em;
   text-shadow:
-    -2px -2px 0 #111,
-    2px -2px 0 #111,
-    -2px 2px 0 #111,
-    2px 2px 0 #111,
-    -4px 0 0 #111,
-    4px 0 0 #111,
-    0 -4px 0 #111,
-    0 4px 0 #111,
-    -6px 2px 0 rgba(0, 0, 0, 0.95),
-    6px 6px 0 rgba(0, 0, 0, 0.28);
-  filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.16));
+    -1px -1px 0 #111,
+    1px -1px 0 #111,
+    -1px 1px 0 #111,
+    1px 1px 0 #111,
+    -2px 0 0 rgba(17, 17, 17, 0.92),
+    2px 0 0 rgba(17, 17, 17, 0.92),
+    0 -2px 0 rgba(17, 17, 17, 0.92),
+    0 2px 0 rgba(17, 17, 17, 0.92),
+    -3px 1px 0 rgba(0, 0, 0, 0.52),
+    3px 3px 0 rgba(0, 0, 0, 0.18);
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.12));
   transform-origin: center bottom;
 }
 
@@ -299,10 +299,10 @@ body {
   content: "";
   position: absolute;
   inset: 16% 8% 10%;
-  border: 2px solid rgba(17, 17, 17, 0.72);
+  border: 1px solid rgba(17, 17, 17, 0.56);
   border-radius: 20% 22% 18% 24%;
   transform: rotate(-4deg);
-  opacity: 0.42;
+  opacity: 0.28;
   pointer-events: none;
 }
 
@@ -376,20 +376,17 @@ body {
   border-radius: 0;
   line-height: 1;
   text-transform: lowercase;
-  font-family: Impact, Haettenschweiler, "Arial Black", sans-serif;
+  font-family: "Trebuchet MS", "Arial Rounded MT Bold", Arial, sans-serif;
+  font-weight: 700;
   font-size: 1.02em;
   letter-spacing: 0.02em;
   text-shadow:
-    -1px -1px 0 #111,
-    1px -1px 0 #111,
-    -1px 1px 0 #111,
-    1px 1px 0 #111,
-    -2px 0 0 #111,
-    2px 0 0 #111,
-    0 -2px 0 #111,
-    0 2px 0 #111,
-    3px 4px 0 rgba(0, 0, 0, 0.24);
-  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.16));
+    -1px -1px 0 rgba(17, 17, 17, 0.88),
+    1px -1px 0 rgba(17, 17, 17, 0.88),
+    -1px 1px 0 rgba(17, 17, 17, 0.88),
+    1px 1px 0 rgba(17, 17, 17, 0.88),
+    2px 3px 0 rgba(0, 0, 0, 0.18);
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.12));
 }
 
 .bubble-copy .copy-word:nth-child(odd) {
@@ -425,9 +422,9 @@ body {
   border: 3px solid #050505;
   border-radius: 0;
   clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
-  font-family: Impact, Haettenschweiler, "Arial Black", sans-serif;
-  font-weight: 900;
-  letter-spacing: 0.12em;
+  font-family: "Trebuchet MS", "Arial Rounded MT Bold", Arial, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   color: #fff400;
   outline: none;
   box-shadow:
@@ -441,7 +438,9 @@ body {
 
 .login-card input::placeholder {
   color: rgba(0, 245, 212, 0.78);
-  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.72);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.56);
 }
 
 .login-card input:-webkit-autofill,
