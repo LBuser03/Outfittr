@@ -3,9 +3,9 @@
 // (via the backend's resolveAuth helper); deleteitem uses the old jwtToken field pattern.
 
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
 
 import '../config/api_config.dart';
 import '../models/item.dart';
@@ -71,14 +71,15 @@ class ItemService
     }
   }
 
-  // Creates a new item. image is optional — pass an XFile from image_picker or null.
+  // Creates a new item. Pass imageBytes + imageName to attach a photo, or omit both.
   // Uses multipart/form-data so the image file can be attached.
   static Future<ItemResult<Item>> addItem({
     required String name,
     required String type,
     required String notes,
     required List<String> tags,
-    XFile? image,
+    Uint8List? imageBytes,
+    String? imageName,
   }) async
   {
     final token = await AuthService.currentToken();
@@ -97,11 +98,10 @@ class ItemService
       // Backend expects a JSON array string: '["casual","summer"]'
       request.fields['tags'] = jsonEncode(tags);
 
-      if (image != null)
+      if (imageBytes != null && imageName != null)
       {
-        final bytes = await image.readAsBytes();
         request.files.add(
-          http.MultipartFile.fromBytes('image', bytes, filename: image.name),
+          http.MultipartFile.fromBytes('image', imageBytes, filename: imageName),
         );
       }
 
@@ -129,15 +129,16 @@ class ItemService
     }
   }
 
-  // Edits an existing item. Pass a new image to replace the old one, or null to
-  // keep the existing imageURL unchanged.
+  // Edits an existing item. Pass imageBytes + imageName to replace the photo, or
+  // omit both to keep the existing imageURL unchanged.
   static Future<ItemResult<Item>> editItem({
     required String itemId,
     required String name,
     required String type,
     required String notes,
     required List<String> tags,
-    XFile? image,
+    Uint8List? imageBytes,
+    String? imageName,
   }) async
   {
     final token = await AuthService.currentToken();
@@ -156,11 +157,10 @@ class ItemService
       request.fields['notes'] = notes;
       request.fields['tags'] = jsonEncode(tags);
 
-      if (image != null)
+      if (imageBytes != null && imageName != null)
       {
-        final bytes = await image.readAsBytes();
         request.files.add(
-          http.MultipartFile.fromBytes('image', bytes, filename: image.name),
+          http.MultipartFile.fromBytes('image', imageBytes, filename: imageName),
         );
       }
 

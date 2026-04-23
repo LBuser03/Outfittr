@@ -1,5 +1,5 @@
-// ModelPreviewCard — the framed "professor" model at the center of the Preview
-// tab. Stacks equipped clothing images on top of the professor image. Subtle
+// ModelPreviewCard — the framed stick-figure model at the center of the Preview
+// tab. Stacks equipped clothing images on top of the figure. Subtle
 // one-shot entry rotation, no continuous spin (per mobile design decisions).
 
 import 'package:flutter/material.dart';
@@ -102,17 +102,22 @@ class _ModelPreviewCardState extends State<ModelPreviewCard>
                 ),
               ),
 
-              // Professor head/body image centered in the frame.
+              // Stick figure base — centered in the frame with padding on all sides.
               Padding(
                 padding: const EdgeInsets.all(24),
-                child: Image.asset('assets/images/professor.png', fit: BoxFit.contain),
+                child: Image.asset('assets/images/figure.png', fit: BoxFit.contain),
               ),
 
-              // Equipped clothing layered on top (hat → shirt → pants → shoes).
-              if (widget.hat != null) _buildLayer(widget.hat!, top: 24, height: 70),
-              if (widget.shirt != null) _buildLayer(widget.shirt!, top: 110, height: 90),
-              if (widget.pants != null) _buildLayer(widget.pants!, top: 200, height: 80),
-              if (widget.shoes != null) _buildLayer(widget.shoes!, top: 280, height: 50),
+              // Clothing layers positioned to match the stick figure's anatomy.
+              // Card height = 340, figure display area = y:24→316 (292px).
+              // Head  ≈ top 25%  → y 20–92
+              // Torso ≈ 25–55%   → y 92–188
+              // Hips  ≈ 55–78%   → y 188–270
+              // Feet  ≈ 78–100%  → y 270–316
+              if (widget.hat != null)   _buildLayer(widget.hat!,   top: 20,  height: 72),
+              if (widget.shirt != null) _buildLayer(widget.shirt!, top: 92,  height: 96),
+              if (widget.pants != null) _buildLayer(widget.pants!, top: 188, height: 82),
+              if (widget.shoes != null) _buildLayer(widget.shoes!, top: 270, height: 46),
             ],
           ),
         ),

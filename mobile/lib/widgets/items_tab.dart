@@ -1,9 +1,8 @@
 // ItemsTab — second bottom-nav tab. Loads the user's wardrobe items from the
 // backend and supports add, edit, and delete with an image picker.
 
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/item.dart';
@@ -327,6 +326,8 @@ class _ItemFormScreenState extends State<_ItemFormScreen>
   String _type = _kTypes.first;
   XFile? _pickedImage;
   Uint8List? _previewBytes;
+  // When a sample preset is selected this holds the asset path; _pickedImage is cleared.
+  String? _presetAssetKey;
   bool _saving = false;
   String? _error;
 
@@ -360,7 +361,18 @@ class _ItemFormScreenState extends State<_ItemFormScreen>
     final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (file == null) return;
     final bytes = await file.readAsBytes();
-    setState(() { _pickedImage = file; _previewBytes = bytes; });
+    setState(() { _pickedImage = file; _previewBytes = bytes; _presetAssetKey = null; });
+  }
+
+  // Selects a bundled sample image and pre-fills name/type for quick testing.
+  void _selectPreset(_PresetItem preset)
+  {
+    setState(() {
+      _presetAssetKey = preset.assetKey;
+      _pickedImage = null;
+      if (_nameCtrl.text.isEmpty) _nameCtrl.text = preset.name;
+      _type = preset.type;
+    });
   }
 
   // Splits the tags field on commas, trims whitespace, drops empty strings.
@@ -378,6 +390,21 @@ class _ItemFormScreenState extends State<_ItemFormScreen>
 
     setState(() { _saving = true; _error = null; });
 
+    // Resolve image bytes from whichever source was selected.
+    List<int>? imageBytes;
+    String? imageName;
+    if (_presetAssetKey != null)
+    {
+      final data = await rootBundle.load(_presetAssetKey!);
+      imageBytes = data.buffer.asUint8List();
+      imageName = _presetAssetKey!.split('/').last;
+    }
+    else if (_pickedImage != null)
+    {
+      imageBytes = await _pickedImage!.readAsBytes();
+      imageName = _pickedImage!.name;
+    }
+
     final existing = widget.editing;
     final result = existing == null
         ? await ItemService.addItem(
@@ -385,7 +412,8 @@ class _ItemFormScreenState extends State<_ItemFormScreen>
             type: _type,
             notes: _notesCtrl.text.trim(),
             tags: _parseTags(),
-            image: _pickedImage,
+            imageBytes: imageBytes != null ? Uint8List.fromList(imageBytes) : null,
+            imageName: imageName,
           )
         : await ItemService.editItem(
             itemId: existing.id,
@@ -393,7 +421,8 @@ class _ItemFormScreenState extends State<_ItemFormScreen>
             type: _type,
             notes: _notesCtrl.text.trim(),
             tags: _parseTags(),
-            image: _pickedImage,
+            imageBytes: imageBytes != null ? Uint8List.fromList(imageBytes) : null,
+            imageName: imageName,
           );
 
     if (!mounted) return;
@@ -440,7 +469,7 @@ class _ItemFormScreenState extends State<_ItemFormScreen>
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(15),
-                  child: _buildImagePreview(_previewBytes, existingImageUrl),
+                  child: _buildImagePreview(existingImageUrl),
                 ),
               ),
             ),
@@ -454,6 +483,8 @@ class _ItemFormScreenState extends State<_ItemFormScreen>
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            _buildPresetRow(),
             const SizedBox(height: 24),
 
             GraffitiTextField(controller: _nameCtrl, placeholder: 'Name'),
@@ -505,12 +536,16 @@ class _ItemFormScreenState extends State<_ItemFormScreen>
     );
   }
 
-  // Shows the freshly-picked image, the existing URL image, or a placeholder.
-  Widget _buildImagePreview(Uint8List? localBytes, String networkUrl)
+  // Shows the picked gallery image, preset asset, existing network image, or placeholder.
+  Widget _buildImagePreview(String networkUrl)
   {
-    if (localBytes != null)
+    if (_previewBytes != null)
     {
-      return Image.memory(localBytes, fit: BoxFit.contain);
+      return Image.memory(_previewBytes!, fit: BoxFit.contain);
+    }
+    if (_presetAssetKey != null)
+    {
+      return Image.asset(_presetAssetKey!, fit: BoxFit.contain);
     }
     if (networkUrl.isNotEmpty)
     {
@@ -522,7 +557,82 @@ class _ItemFormScreenState extends State<_ItemFormScreen>
     }
     return const _PickerPlaceholder();
   }
+
+  // Row of bundled sample images for quick testing without a camera/gallery.
+  Widget _buildPresetRow()
+  {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(
+          child: Text(
+            '— OR PICK A SAMPLE —',
+            style: AppTextStyles.body.copyWith(
+              fontSize: 11,
+              color: AppColors.textPrimary.withValues(alpha: 0.5),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: _kPresets.map((p) {
+            final selected = _presetAssetKey == p.assetKey;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => _selectPreset(p),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: selected ? AppColors.accentAqua : AppColors.inputBorder,
+                      width: selected ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      AspectRatio(
+                        aspectRatio: 1,
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
+                          child: Image.asset(p.assetKey, fit: BoxFit.cover),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text(
+                          p.name,
+                          style: AppTextStyles.body.copyWith(fontSize: 9),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
 }
+
+// Bundled sample clothing items for testing without needing a camera or gallery.
+class _PresetItem
+{
+  final String assetKey;
+  final String name;
+  final String type;
+  const _PresetItem({required this.assetKey, required this.name, required this.type});
+}
+
+const _kPresets = [
+  _PresetItem(assetKey: 'assets/images/beanie.png', name: 'Beanie', type: 'HAT'),
+  _PresetItem(assetKey: 'assets/images/jacket.png', name: 'Jacket', type: 'JACKET'),
+  _PresetItem(assetKey: 'assets/images/jeans.png',  name: 'Jeans',  type: 'PANTS'),
+  _PresetItem(assetKey: 'assets/images/shoe.png',   name: 'Shoe',   type: 'SHOES'),
+];
 
 class _PickerPlaceholder extends StatelessWidget
 {

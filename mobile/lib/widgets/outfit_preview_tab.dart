@@ -220,7 +220,7 @@ class _OutfitPreviewTabState extends State<OutfitPreviewTab>
             onPressed: _saving ? null : _save,
             busy: _saving,
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 90),
         ],
       ),
     );
