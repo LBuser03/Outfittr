@@ -376,7 +376,7 @@ function OutfitManagerPage() {
                     return loadedOutfits[0] || null;
                 }
 
-                return loadedOutfits.find(outfit => outfit.outfitId === currentSelected.outfitId) || null;
+                return loadedOutfits.find((outfit : Outfit) => outfit.outfitId === currentSelected.outfitId) || null;
             });
         } catch (e) {
             console.error("Error fetching outfits:", e);
