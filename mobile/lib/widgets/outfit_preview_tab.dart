@@ -189,28 +189,32 @@ class _OutfitPreviewTabState extends State<OutfitPreviewTab>
             childAspectRatio: 1.0,
             children: [
               SlotTile(
-                emoji: '🧢',
+                icon: 'assets/images/hat.png',
                 typeLabel: 'Hat',
                 item: _hat,
                 onTap: () => _pickSlot('hat', (item) => _hat = item),
+                onRemove: _hat != null ? () => setState(() => _hat = null) : null,
               ),
               SlotTile(
-                emoji: '👕',
+                icon: 'assets/images/shirt.png',
                 typeLabel: 'Shirt',
                 item: _shirt,
                 onTap: () => _pickSlot('shirt', (item) => _shirt = item),
+                onRemove: _shirt != null ? () => setState(() => _shirt = null) : null,
               ),
               SlotTile(
-                emoji: '👖',
+                icon: 'assets/images/pants.png',
                 typeLabel: 'Pants',
                 item: _pants,
                 onTap: () => _pickSlot('pants', (item) => _pants = item),
+                onRemove: _pants != null ? () => setState(() => _pants = null) : null,
               ),
               SlotTile(
-                emoji: '👟',
+                icon: 'assets/images/shoes.png',
                 typeLabel: 'Shoes',
                 item: _shoes,
                 onTap: () => _pickSlot('shoes', (item) => _shoes = item),
+                onRemove: _shoes != null ? () => setState(() => _shoes = null) : null,
               ),
             ],
           ),
@@ -235,6 +239,13 @@ class _SlotPickerSheet extends StatelessWidget
 
   const _SlotPickerSheet({required this.type, required this.pool});
 
+  String _slotPickerLabel(String t)
+  {
+    final upper = t.toUpperCase();
+    if (upper == 'SHOES' || upper == 'PANTS') return 'PICK A PAIR OF $upper';
+    return 'PICK A $upper';
+  }
+
   @override
   Widget build(BuildContext context)
   {
@@ -246,7 +257,7 @@ class _SlotPickerSheet extends StatelessWidget
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'PICK A ${type.toUpperCase()}',
+              _slotPickerLabel(type),
               style: AppTextStyles.heading.copyWith(color: AppColors.accentAqua),
               textAlign: TextAlign.center,
             ),

@@ -1,7 +1,8 @@
 // OutfitsTab — third bottom-nav tab. Search field + list of outfit cards with
-// emoji pips for the items in each outfit.
+// SVG icon pips for the items in each outfit.
 
 import 'package:flutter/material.dart';
+
 
 import '../models/outfit.dart';
 import '../theme/app_theme.dart';
@@ -39,21 +40,21 @@ class _OutfitsTabState extends State<OutfitsTab>
     super.dispose();
   }
 
-  // Maps an item type to its matching emoji so outfit cards can show pips.
-  String _emojiForType(String type)
+  // Maps an item type to its matching SVG asset path for outfit card pips.
+  String _iconForType(String type)
   {
     switch (type.toLowerCase())
     {
       case 'hat':
-        return '🧢';
+        return 'assets/images/hat.png';
       case 'shirt':
-        return '👕';
+        return 'assets/images/shirt.png';
       case 'pants':
-        return '👖';
+        return 'assets/images/pants.png';
       case 'shoes':
-        return '👟';
+        return 'assets/images/shoes.png';
       default:
-        return '👕';
+        return 'assets/images/shirt.png';
     }
   }
 
@@ -101,7 +102,7 @@ class _OutfitsTabState extends State<OutfitsTab>
                     separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (_, i) => _OutfitCard(
                       outfit: filtered[i],
-                      emojiForType: _emojiForType,
+                      iconForType: _iconForType,
                       onTap: () => widget.onEdit(filtered[i]),
                       onDelete: () => widget.onDelete(filtered[i]),
                     ),
@@ -117,13 +118,13 @@ class _OutfitsTabState extends State<OutfitsTab>
 class _OutfitCard extends StatelessWidget
 {
   final Outfit outfit;
-  final String Function(String type) emojiForType;
+  final String Function(String type) iconForType;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
   const _OutfitCard({
     required this.outfit,
-    required this.emojiForType,
+    required this.iconForType,
     required this.onTap,
     required this.onDelete,
   });
@@ -156,7 +157,7 @@ class _OutfitCard extends StatelessWidget
                   Wrap(
                     spacing: 4,
                     children: outfit.items
-                        .map((i) => Text(emojiForType(i.type), style: const TextStyle(fontSize: 20)))
+                        .map((i) => Image.asset(iconForType(i.type), width: 20, height: 20))
                         .toList(),
                   ),
                   if (outfit.items.isEmpty)

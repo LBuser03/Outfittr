@@ -1,13 +1,14 @@
-// ModelPreviewCard — the framed stick-figure model at the center of the Preview
-// tab. Stacks equipped clothing images on top of the figure. Subtle
-// one-shot entry rotation, no continuous spin (per mobile design decisions).
+// ModelPreviewCard — framed card containing a 2x2 collage of the four outfit
+// slots. Each tile is slightly tilted for a graffiti/streetwear aesthetic.
 
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+
 
 import '../models/item.dart';
 import '../theme/app_theme.dart';
 
-class ModelPreviewCard extends StatefulWidget
+class ModelPreviewCard extends StatelessWidget
 {
   final Item? hat;
   final Item? shirt;
@@ -22,124 +23,143 @@ class ModelPreviewCard extends StatefulWidget
     this.shoes,
   });
 
-  @override
-  State<ModelPreviewCard> createState() => _ModelPreviewCardState();
-}
-
-class _ModelPreviewCardState extends State<ModelPreviewCard>
-    with SingleTickerProviderStateMixin
-{
-  late final AnimationController _entryController;
-  late final Animation<double> _entryAnimation;
-
-  @override
-  void initState()
-  {
-    super.initState();
-    _entryController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    // Starts tilted, settles to straight — a one-shot bounce-in effect.
-    _entryAnimation = Tween<double>(begin: -0.08, end: 0).animate(
-      CurvedAnimation(parent: _entryController, curve: Curves.easeOutBack),
-    );
-    _entryController.forward();
-  }
-
-  @override
-  void dispose()
-  {
-    _entryController.dispose();
-    super.dispose();
-  }
+  static double _deg(double d) => d * math.pi / 180;
 
   @override
   Widget build(BuildContext context)
   {
-    return AnimatedBuilder(
-      animation: _entryAnimation,
-      builder: (context, child)
-      {
-        return Transform.rotate(angle: _entryAnimation.value, child: child);
-      },
-      child: Container(
-        width: 260,
-        height: 340,
-        decoration: BoxDecoration(
-          color: AppColors.bgDark.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.inputBorder, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.accentAqua.withValues(alpha: 0.35),
-              offset: const Offset(-6, 0),
-              blurRadius: 24,
-            ),
-            BoxShadow(
-              color: AppColors.accentPink.withValues(alpha: 0.35),
-              offset: const Offset(6, 0),
-              blurRadius: 24,
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Radial gradient backdrop — stands in for the frontend's conic spinner.
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      colors: [
-                        AppColors.accentGold.withValues(alpha: 0.2),
-                        Colors.transparent,
-                      ],
-                    ),
+    return Container(
+      width: 260,
+      height: 300,
+      decoration: BoxDecoration(
+        color: AppColors.bgDark.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.inputBorder, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.accentAqua.withValues(alpha: 0.35),
+            offset: const Offset(-6, 0),
+            blurRadius: 24,
+          ),
+          BoxShadow(
+            color: AppColors.accentPink.withValues(alpha: 0.35),
+            offset: const Offset(6, 0),
+            blurRadius: 24,
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Stack(
+          children: [
+            // Radial gradient backdrop.
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.accentGold.withValues(alpha: 0.15),
+                      Colors.transparent,
+                    ],
                   ),
                 ),
               ),
+            ),
 
-              // Stick figure base — centered in the frame with padding on all sides.
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Image.asset('assets/images/figure.png', fit: BoxFit.contain),
+            // 2x2 collage grid, padded inside the card.
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: _CollageTile(item: hat,   icon: 'assets/images/hat.png',   label: 'HAT',   angle: _deg(-5))),
+                      const SizedBox(width: 10),
+                      Expanded(child: _CollageTile(item: shirt, icon: 'assets/images/shirt.png', label: 'SHIRT', angle: _deg(4))),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: _CollageTile(item: pants, icon: 'assets/images/pants.png', label: 'PANTS', angle: _deg(3))),
+                      const SizedBox(width: 10),
+                      Expanded(child: _CollageTile(item: shoes, icon: 'assets/images/shoes.png', label: 'SHOES', angle: _deg(-6))),
+                    ],
+                  ),
+                ],
               ),
-
-              // Clothing layers positioned to match the stick figure's anatomy.
-              // Card height = 340, figure display area = y:24→316 (292px).
-              // Head  ≈ top 25%  → y 20–92
-              // Torso ≈ 25–55%   → y 92–188
-              // Hips  ≈ 55–78%   → y 188–270
-              // Feet  ≈ 78–100%  → y 270–316
-              if (widget.hat != null)   _buildLayer(widget.hat!,   top: 20,  height: 72),
-              if (widget.shirt != null) _buildLayer(widget.shirt!, top: 92,  height: 96),
-              if (widget.pants != null) _buildLayer(widget.pants!, top: 188, height: 82),
-              if (widget.shoes != null) _buildLayer(widget.shoes!, top: 270, height: 46),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
 
-  // Renders a single clothing layer as an overlayed image. Uses imageUrl when
-  // available; otherwise shows nothing (filled slot without image still exists).
-  Widget _buildLayer(Item item, {required double top, required double height})
+class _CollageTile extends StatelessWidget
+{
+  final Item?  item;
+  final String icon;
+  final String label;
+  final double angle;
+
+  const _CollageTile({
+    required this.item,
+    required this.icon,
+    required this.label,
+    required this.angle,
+  });
+
+  @override
+  Widget build(BuildContext context)
   {
-    if (item.imageUrl.isEmpty) return const SizedBox.shrink();
-    return Positioned(
-      top: top,
-      left: 0,
-      right: 0,
-      height: height,
-      child: Image.network(
-        item.imageUrl,
-        fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+    final bool hasImage = item != null && item!.imageUrl.isNotEmpty;
+
+    return Transform.rotate(
+      angle: angle,
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: hasImage
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  item!.imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => _Placeholder(icon: icon, label: label),
+                ),
+              )
+            : _Placeholder(icon: icon, label: label),
       ),
+    );
+  }
+}
+
+class _Placeholder extends StatelessWidget
+{
+  final String icon;
+  final String label;
+
+  const _Placeholder({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context)
+  {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Image.asset(icon, width: 32, height: 32),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: AppTextStyles.body.copyWith(
+            color: AppColors.inputBorder,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,25 +1,28 @@
 // SlotTile — one square in the HAT/SHIRT/PANTS/SHOES grid on the Preview tab.
 // Empty state shows a dashed border + emoji + type label; filled state shows a
-// gradient background + item thumbnail + item name.
+// spray-paint background + item thumbnail + item name.
 
 import 'package:flutter/material.dart';
+
 
 import '../models/item.dart';
 import '../theme/app_theme.dart';
 
 class SlotTile extends StatelessWidget
 {
-  final String emoji;
+  final String icon;
   final String typeLabel;
   final Item? item;
   final VoidCallback onTap;
+  final VoidCallback? onRemove;
 
   const SlotTile({
     super.key,
-    required this.emoji,
+    required this.icon,
     required this.typeLabel,
     required this.item,
     required this.onTap,
+    this.onRemove,
   });
 
   @override
@@ -32,11 +35,10 @@ class SlotTile extends StatelessWidget
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          gradient: filled
-              ? const LinearGradient(
-                  colors: [AppColors.accentGold, AppColors.accentAqua, AppColors.accentPink],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+          image: filled
+              ? const DecorationImage(
+                  image: AssetImage('assets/images/spray-paint.png'),
+                  fit: BoxFit.cover,
                 )
               : null,
           color: filled ? null : AppColors.inputBg,
@@ -55,7 +57,7 @@ class SlotTile extends StatelessWidget
           children: [
             Row(
               children: [
-                Text(emoji, style: const TextStyle(fontSize: 22)),
+                Image.asset(icon, width: 22, height: 22),
                 const SizedBox(width: 6),
                 Text(
                   typeLabel.toUpperCase(),
@@ -64,6 +66,13 @@ class SlotTile extends StatelessWidget
                     color: filled ? Colors.black : AppColors.textPrimary,
                   ),
                 ),
+                if (filled && onRemove != null) ...[
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: onRemove,
+                    child: const Icon(Icons.close, size: 16, color: Colors.black54),
+                  ),
+                ],
               ],
             ),
             if (filled)
